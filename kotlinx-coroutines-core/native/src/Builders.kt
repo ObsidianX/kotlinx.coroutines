@@ -78,3 +78,17 @@ private class BlockingCoroutine<T>(
         state as T
     }
 }
+
+internal fun runEventLoop(eventLoop: EventLoop?, isCompleted: () -> Boolean) {
+    try {
+        eventLoop?.incrementUseCount()
+        val thread = currentThread()
+        while (!isCompleted()) {
+            val parkNanos = eventLoop?.processNextEvent() ?: Long.MAX_VALUE
+            if (isCompleted()) break
+            thread.parkNanos(parkNanos)
+        }
+    } finally { // paranoia
+        eventLoop?.decrementUseCount()
+    }
+}
